@@ -48,25 +48,58 @@ export NAME=henrykingroyal.co
 export KOPS_STATE_STORE=s3://kops-socks-shop
 
 # #execute kops commands to create our clusters
-# sudo su -c "kops create cluster --cloud=aws \
-#   --zones=eu-west-2a,eu-west-2b,eu-west-2c \
-#   --control-plane-zones=eu-west-2a,eu-west-2b,eu-west-2c \
-#   --networking calico \
-#   --state=s3://kops-socks-shop \
-#   --node-count=3 \
-#   --topology private \
-#   --bastion \
-#   --ssh-public-key /home/ubuntu/.ssh/id_rsa.pub \
-#   --node-size=t3.medium \
-#   --control-plane-size=t3.medium \
-#   --control-plane-count=3 \
-#   --name=henrykingroyal.co \
-#   --yes" ubuntu
+sudo su -c "kops create cluster --cloud=aws \
+  --zones=eu-west-2a,eu-west-2b,eu-west-2c \
+  --control-plane-zones=eu-west-2a,eu-west-2b,eu-west-2c \
+  --networking calico \
+  --state=s3://kops-socks-shop \
+  --node-count=3 \
+  --topology private \
+  --bastion \
+  --ssh-public-key /home/ubuntu/.ssh/id_rsa.pub \
+  --node-size=t3.medium \
+  --control-plane-size=t3.medium \
+  --control-plane-count=3 \
+  --name=henrykingroyal.co \
+  --yes" ubuntu
 
 # #update the cluster
 # sudo su -c "kops update cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes --admin" ubuntu
 
 # #To watch on your cluster creation 
 # sudo su -c "kops validate cluster --state=s3://kops-socks-shop --wait 10m" ubuntu
+
+sudo su -c "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml" ubuntu
+
+sudo cat <<EOT> /home/ubuntu/admin-user.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOT
+sudo chown ubuntu:ubuntu /home/ubuntu/admin-user.yaml 
+sudo su -c "kubectl apply -f /home/ubuntu/admin-user.yaml" ubuntu
+
+sudo cat <<EOT> /home/ubuntu/cluster-binding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: admin-user
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: admin-user
+  namespace: kubernetes-dashboard
+EOT
+
+sudo chown ubuntu:ubuntu /home/ubuntu/cluster-binding.yaml 
+sudo su -c "kubectl apply -f /home/ubuntu/cluster-binding.yaml" ubuntu
+sleep 20
+
+sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
 EOF
 }
