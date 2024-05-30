@@ -64,10 +64,10 @@ sudo su -c "kops create cluster --cloud=aws \
   --yes" ubuntu
 
 # #update the cluster
-# sudo su -c "kops update cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes --admin" ubuntu
+sudo su -c "kops update cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes --admin" ubuntu
 
 # #To watch on your cluster creation 
-# sudo su -c "kops validate cluster --state=s3://kops-socks-shop --wait 10m" ubuntu
+sudo su -c "kops validate cluster --state=s3://kops-socks-shop --wait 10m" ubuntu
 
 sudo su -c "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml" ubuntu
 
@@ -101,5 +101,13 @@ sudo su -c "kubectl apply -f /home/ubuntu/cluster-binding.yaml" ubuntu
 sleep 20
 
 sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
+
+sudo su -c "kubectl patch svc kubernetes-dashboard -n kubernetes-dashboard -p '{\"spec\": {\"type\": \"LoadBalancer\"}}'" ubuntu
+
+# helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
+# helm repo update
+# helm install my-ingress-nginx ingress-nginx/ingress-nginx
 EOF
 }
+
+# kops delete cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes
