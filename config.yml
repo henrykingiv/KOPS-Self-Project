@@ -1,0 +1,163 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  rules:
+    - host: kubernetes.henrykingroyal.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kubernetes-dashboard
+                port:
+                  number: 443
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: sock-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stage.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: prod-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prod.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+
+
+
+
+
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: sock-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stage.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: prod-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prod.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+
+apiVersion: v1
+kind: Secret
+metadata:
+  name: kubernetes-dashboard-tls
+  namespace: kubernetes-dashboard
+type: kubernetes.io/tls
+data:
+  tls.crt: "${TLS_CRT}"
+  tls.key: "${TLS_KEY}"
+
+
+#ArgoCD Deployment yaml file
+
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ''
+spec:
+  destination:
+    name: ''
+    namespace: ''
+    server: ''
+  source:
+    path: ''
+    repoURL: ''
+    targetRevision: HEAD
+  sources: []
+  project: ''
+
+# # openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout tls.key -out tls.crt -subj "/CN=kubernetes.henrykingroyal.com/O=yourorganization"
+# # kubectl create secret tls kubernetes-dashboard-tls --cert=tls.crt --key=tls.key -n kubernetes-dashboard
+
+# base64 -w 0 tls.crt > tls.crt.base64
+# base64 -w 0 tls.key > tls.key.base64
+
+# helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+# kubectl create namespace prometheus-node-exporter
+# helm install prometheus-node-exporter prometheus-community/prometheus-node-exporter --namespace prometheus-node-exporter
+
+# sudo su -c "kubectl create namespace "{{ namespace }}"" ubuntu
+# sudo su -c "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts" ubuntu
+# sudo su -c "helm repo update" ubuntu
+# sudo su -c "helm install prometheus-stack prometheus-community/kube-prometheus-stack --namespace
+
+# echo "TLS_CRT=$(cat tls.crt.base64)" > tls-secrets.env
+# echo "TLS_KEY=$(cat tls.key.base64)" >> tls-secrets.env
+
+# # # Secure the file with appropriate permissions
+# # chmod 600 tls-secrets.env
+
+
+
+
+# export $(cat tls-secrets.env | xargs) 
+# envsubst < secrets-tls.yaml.tpl > secret-tls.yaml
+#kubectl apply -f /home/ubuntu/secret-tls.yaml
