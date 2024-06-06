@@ -67,9 +67,10 @@ sudo su -c "kops create cluster --cloud=aws \
 sudo su -c "kops update cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes --admin" ubuntu
 
 # #To watch on your cluster creation 
-sudo su -c "kops validate cluster --state=s3://kops-socks-shop --wait 10m" ubuntu
+sudo su -c "kops validate cluster --state=s3://kops-socks-shop --wait 15m" ubuntu
 
 sudo su -c "kubectl apply -f https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml" ubuntu
+sleep 20
 
 sudo cat <<EOT> /home/ubuntu/admin-user.yaml
 apiVersion: v1
@@ -98,16 +99,189 @@ EOT
 
 sudo chown ubuntu:ubuntu /home/ubuntu/cluster-binding.yaml 
 sudo su -c "kubectl apply -f /home/ubuntu/cluster-binding.yaml" ubuntu
-sleep 20
 
+sudo su -c "kubectl create namespace argocd" ubuntu
+sudo su -c "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml" ubuntu
+
+
+# # Ingress installation with Helm
+sudo su -c "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx" ubuntu
+sudo su -c "helm repo update" ubuntu
+sudo su -c "helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace" ubuntu
+
+sudo su -c "helm repo add prometheus-community https://prometheus-community.github.io/helm-charts" ubuntu
+sudo su -c "helm repo add grafana https://grafana.github.io/helm-charts" ubuntu
+sudo su -c "helm repo update" ubuntu
+
+sudo su -c "helm install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace" ubuntu
+sudo su -c "helm install grafana grafana/grafana --namespace monitoring" ubuntu
+sleep 60
+
+#Token Creation for namespaces
+sudo su -c "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 --decode > /home/ubuntu/argopassword" ubuntu
+sudo su -c "kubectl get secret --namespace prometheus grafana -o jsonpath="{.data.admin-password}" | base64 --decode > /home/ubuntu/grafpassword" ubuntu
 sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
 
-sudo su -c "kubectl patch svc kubernetes-dashboard -n kubernetes-dashboard -p '{\"spec\": {\"type\": \"LoadBalancer\"}}'" ubuntu
+#Repo Deployment for Stage and Prod
+REPO_URL="https://github.com/henrykingiv/US-Team-Sock-Shop-App-Repo.git"
+TARGET_DIR="/home/ubuntu/US-Team-Sock-Shop-App-Repo"
 
-# helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-# helm repo update
-# helm install my-ingress-nginx ingress-nginx/ingress-nginx
+# Create the target directory with correct permissions
+sudo mkdir -p $TARGET_DIR
+sudo chown -R ubuntu:ubuntu $TARGET_DIR
+
+# Switch to the target directory
+cd /home/ubuntu
+
+# Clone the repository
+sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
+sudo su -c "kubectl apply -f /home/ubuntu/US-Team-Sock-Shop-App-Repo/complete.yaml" ubuntu
+sudo su -c "kubectl apply -f /home/ubuntu/US-Team-Sock-Shop-App-Repo/deploy/kubernetes/prod-complete.yaml" ubuntu
+sleep 60
+
+
+# #Loadbalancer Network configuration
+sudo cat <<EOT> /home/ubuntu/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kubernetes-dashboard
+  namespace: kubernetes-dashboard
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+    - hosts:
+        - kubernetes.henrykingroyal.co
+      secretName: kubernetes-dashboard-tls
+  rules:
+    - host: kubernetes.henrykingroyal.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kubernetes-dashboard
+                port:
+                  number: 443
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: argocd-server-ingress
+  namespace: argocd
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+spec:
+  tls:
+    - hosts:
+        - argocd.henrykingroyal.co
+      secretName: argocd-tls
+  rules:
+    - host: argocd.henrykingroyal.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: argocd-server
+                port:
+                  number: 443
+
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: sock-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stage.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: prod-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prod.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: prometheus-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: prometheus.henrykingroyal.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: prometheus-server
+                port:
+                  number: 80
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: grafana-ingress
+  namespace: monitoring
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  rules:
+    - host: grafana.henrykingroyal.co
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 80
+
+EOT
+
+sudo chown ubuntu:ubuntu /home/ubuntu/ingress.yaml
+sudo su -c "kubectl apply -f /home/ubuntu/ingress.yaml" ubuntu
 EOF
 }
 
 # kops delete cluster --name henrykingroyal.co --state=s3://kops-socks-shop --yes
+
+# kubectl get secret --namespace prometheus grafana -o jsonpath="{.data.admin-password}" | base64 --decode ; echo
