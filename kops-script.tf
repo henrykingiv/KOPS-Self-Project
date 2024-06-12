@@ -124,19 +124,19 @@ sudo su -c "kubectl get secret --namespace monitoring grafana -o jsonpath="{.dat
 sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
 
 #Repo Deployment for Stage and Prod
-REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
-TARGET_DIR="/home/ubuntu/boutique-microservices-application"
+# REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
+# TARGET_DIR="/home/ubuntu/boutique-microservices-application"
 
-# Create the target directory with correct permissions
-sudo mkdir -p $TARGET_DIR
-sudo chown -R ubuntu:ubuntu $TARGET_DIR
+# # Create the target directory with correct permissions
+# sudo mkdir -p $TARGET_DIR
+# sudo chown -R ubuntu:ubuntu $TARGET_DIR
 
-# Switch to the target directory
-cd /home/ubuntu
+# # Switch to the target directory
+# cd /home/ubuntu
 
-# Clone the repository
-sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
-sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/complete.yaml" ubuntu
+# # Clone the repository
+# sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
+# sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/complete.yaml" ubuntu
 sleep 40
 
 
