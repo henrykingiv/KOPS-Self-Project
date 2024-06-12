@@ -115,6 +115,25 @@ data:
   tls.crt: "${TLS_CRT}"
   tls.key: "${TLS_KEY}"
 
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: sock-shop
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: stage.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: front-end
+                port:
+                  number: 80
+            path: /
 
 #ArgoCD Deployment yaml file
 
