@@ -5,6 +5,6 @@ terraform {
     dynamodb_table = "kops-socks-table"
     region         = "eu-west-2"
     encrypt        = true
-    profile        = "LeadUser"
+    #profile        = "LeadUser"
   }
 }
