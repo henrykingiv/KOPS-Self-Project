@@ -41,7 +41,7 @@ export AWS_SECRET_ACCESS_KEY=${aws_iam_access_key.kop-user-access-key.secret}
 sudo su -c "ssh-keygen -t rsa -m PEM -f /home/ubuntu/.ssh/id_rsa -q -N ''" ubuntu
 
 #create rest time
-sleep 10
+sleep 20
 
 #variable for bucket and domain names
 export NAME=henrykingroyal.co
@@ -100,11 +100,12 @@ EOT
 sudo chown ubuntu:ubuntu /home/ubuntu/cluster-binding.yaml 
 sudo su -c "kubectl apply -f /home/ubuntu/cluster-binding.yaml" ubuntu
 
+#Argocd namespace and deployment manifest
 sudo su -c "kubectl create namespace argocd" ubuntu
 sudo su -c "kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml" ubuntu
 
 
-# # Ingress installation with Helm
+# # Ingress-nginx Helm Chart installation with Helm
 sudo su -c "helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx" ubuntu
 sudo su -c "helm repo update" ubuntu
 sudo su -c "helm install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace" ubuntu
@@ -115,16 +116,16 @@ sudo su -c "helm repo update" ubuntu
 
 sudo su -c "helm install prometheus prometheus-community/prometheus --namespace monitoring --create-namespace" ubuntu
 sudo su -c "helm install grafana grafana/grafana --namespace monitoring" ubuntu
-sleep 60
+sleep 30
 
 #Token Creation for namespaces
 sudo su -c "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 --decode > /home/ubuntu/argopassword" ubuntu
-sudo su -c "kubectl get secret --namespace prometheus grafana -o jsonpath="{.data.admin-password}" | base64 --decode > /home/ubuntu/grafpassword" ubuntu
+sudo su -c "kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode > /home/ubuntu/grafpassword" ubuntu
 sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
 
 #Repo Deployment for Stage and Prod
-REPO_URL="https://github.com/henrykingiv/US-Team-Sock-Shop-App-Repo.git"
-TARGET_DIR="/home/ubuntu/US-Team-Sock-Shop-App-Repo"
+REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
+TARGET_DIR="/home/ubuntu/boutique-microservices-application"
 
 # Create the target directory with correct permissions
 sudo mkdir -p $TARGET_DIR
@@ -135,9 +136,8 @@ cd /home/ubuntu
 
 # Clone the repository
 sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
-sudo su -c "kubectl apply -f /home/ubuntu/US-Team-Sock-Shop-App-Repo/complete.yaml" ubuntu
-sudo su -c "kubectl apply -f /home/ubuntu/US-Team-Sock-Shop-App-Repo/deploy/kubernetes/prod-complete.yaml" ubuntu
-sleep 60
+sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/complete.yaml" ubuntu
+sleep 40
 
 
 # #Loadbalancer Network configuration
@@ -201,30 +201,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: nginx
-  namespace: sock-shop
+  namespace: boutique
 spec:
   ingressClassName: nginx
   rules:
-    - host: stage.henrykingroyal.co
-      http:
-        paths:
-          - pathType: Prefix
-            backend:
-              service:
-                name: front-end
-                port:
-                  number: 80
-            path: /
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nginx
-  namespace: prod-shop
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: prod.henrykingroyal.co
+    - host: boutique.henrykingroyal.co
       http:
         paths:
           - pathType: Prefix
