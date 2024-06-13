@@ -58,7 +58,7 @@ resource "aws_key_pair" "keypair" {
 
 resource "aws_instance" "jenkins-server" {
   ami = "ami-035cecbff25e0d91e"
-  instance_type = "t2.medium"
+  instance_type = "t3.xlarge"
   vpc_security_group_ids = [aws_security_group.jenkins-sg.id]
   key_name = aws_key_pair.keypair.id
   associate_public_ip_address = true
