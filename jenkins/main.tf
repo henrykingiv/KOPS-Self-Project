@@ -58,12 +58,16 @@ resource "aws_key_pair" "keypair" {
 
 resource "aws_instance" "jenkins-server" {
   ami = "ami-035cecbff25e0d91e"
-  instance_type = "t3.xlarge"
+  instance_type = "t2.medium"
   vpc_security_group_ids = [aws_security_group.jenkins-sg.id]
   key_name = aws_key_pair.keypair.id
   associate_public_ip_address = true
   iam_instance_profile = aws_iam_instance_profile.jenkins-role.id
   user_data = local.script
+  root_block_device {
+    volume_size = 15
+    volume_type = "gp3"  # Optionally specify volume type (gp2, gp3, io1, etc.)
+  }
   tags = {
     Name = "jenkins-server"
   }
