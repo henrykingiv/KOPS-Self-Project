@@ -65,7 +65,7 @@ resource "aws_instance" "jenkins-server" {
   iam_instance_profile = aws_iam_instance_profile.jenkins-role.id
   user_data = local.script
   root_block_device {
-    volume_size = 15
+    volume_size = 25
     volume_type = "gp3"  # Optionally specify volume type (gp2, gp3, io1, etc.)
   }
   tags = {
