@@ -201,11 +201,30 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: nginx
-  namespace: boutique
+  namespace: stage-boutique
 spec:
   ingressClassName: nginx
   rules:
-    - host: boutique.henrykingroyal.co
+    - host: stage.henrykingroyal.co
+      http:
+        paths:
+          - pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+            path: /
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: prod-boutique
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: prod.henrykingroyal.co
       http:
         paths:
           - pathType: Prefix
