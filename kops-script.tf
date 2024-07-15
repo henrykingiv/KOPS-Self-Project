@@ -123,22 +123,6 @@ sudo su -c "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath
 sudo su -c "kubectl get secret --namespace monitoring grafana -o jsonpath="{.data.admin-password}" | base64 --decode > /home/ubuntu/grafpassword" ubuntu
 sudo su -c "kubectl -n kubernetes-dashboard create token admin-user > /home/ubuntu/token" ubuntu
 
-#Repo Deployment for Stage and Prod
-# REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
-# TARGET_DIR="/home/ubuntu/boutique-microservices-application"
-
-# # Create the target directory with correct permissions
-# sudo mkdir -p $TARGET_DIR
-# sudo chown -R ubuntu:ubuntu $TARGET_DIR
-
-# # Switch to the target directory
-# cd /home/ubuntu
-
-# # Clone the repository
-# sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
-# sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/complete.yaml" ubuntu
-sleep 40
-
 
 # #Loadbalancer Network configuration
 sudo cat <<EOT> /home/ubuntu/ingress.yaml
@@ -196,89 +180,191 @@ spec:
                 port:
                   number: 443
 
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nginx
-  namespace: stage-boutique
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: stage.henrykingroyal.co
-      http:
-        paths:
-          - pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
-            path: /
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: nginx
-  namespace: prod-boutique
-spec:
-  ingressClassName: nginx
-  rules:
-    - host: prod.henrykingroyal.co
-      http:
-        paths:
-          - pathType: Prefix
-            backend:
-              service:
-                name: frontend
-                port:
-                  number: 80
-            path: /
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: prometheus-ingress
-  namespace: monitoring
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-spec:
-  rules:
-    - host: prometheus.henrykingroyal.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: prometheus-server
-                port:
-                  number: 80
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: grafana-ingress
-  namespace: monitoring
-  annotations:
-    kubernetes.io/ingress.class: "nginx"
-spec:
-  rules:
-    - host: grafana.henrykingroyal.co
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: grafana
-                port:
-                  number: 80
-
 EOT
 
 sudo chown ubuntu:ubuntu /home/ubuntu/ingress.yaml
 sudo su -c "kubectl apply -f /home/ubuntu/ingress.yaml" ubuntu
+
+#Create istio namespace and install instio
+
+# Define variables
+ISTIO_VERSION="1.16.2"
+TARGET_DIREC="/home/ubuntu/istio-1.16.2"
+PROFILE="default"
+KUBECONFIG_PATH="/home/ubuntu/.kube/config"
+
+# Create directory for Istio
+sudo mkdir -p $TARGET_DIREC
+
+#Change ownership
+sudo chown -R ubuntu:ubuntu $TARGET_DIREC
+cd $TARGET_DIREC
+
+# Download Istio
+curl -L https://istio.io/downloadIstio | ISTIO_VERSION=$ISTIO_VERSION sh -
+
+sleep 5
+
+# Move to Istio directory
+sudo chown -R ubuntu:ubuntu istio-1.16.2
+cd istio-1.16.2
+
+sleep 10
+
+# Add istioctl to PATH
+export PATH=$PWD/bin:$PATH
+
+# Persist the PATH update
+echo 'export PATH=$HOME/istio-1.16.2/bin:$PATH' >> /home/ubuntu/.bashrc
+
+# Source the .bashrc to make istioctl available immediately
+source /home/ubuntu/.bashrc
+
+# Set up KUBECONFIG environment variable
+export KUBECONFIG=$KUBECONFIG_PATH
+
+sleep 10
+
+# Install Istio
+istioctl install -y
+
+# Verify the installation
+sudo su -c "kubectl get pods -n istio-system" ubuntu
+sudo su -c "kubectl -n istio-system get deploy" ubuntu
+
+# Label default namespace for Istio sidecar injection
+sudo su -c "kubectl create namespace istio" ubuntu
+sudo su -c "kubectl label namespace istio istio-injection=enabled" ubuntu
+
+sudo echo "Istio installation is complete."
+
+sudo su -c "kubectl apply -f ~/istio-1.16.2/istio-1.16.2/samples/addons" ubuntu
+sleep 10
+
+#Repo Deployment for Stage and Prod
+REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
+TARGET_DIR="/home/ubuntu/boutique-microservices-application"
+
+# Create the target directory with correct permissions
+sudo mkdir -p $TARGET_DIR
+sudo chown -R ubuntu:ubuntu $TARGET_DIR
+
+# Switch to the target directory
+cd /home/ubuntu
+
+# Clone the repository
+sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
+sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/deployment.yaml" ubuntu
+sleep 20
+
+# Istio Network Gateway Configuration
+sudo cat <<EOT> /home/ubuntu/istio.yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: app-gateway
+  namespace: istio-system
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "boutique.henrykingroyal.co"
+    - "kiali.henrykingroyal.co"
+    - "prometheus.henrykingroyal.co"
+    - "grafana.henrykingroyal.co"
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: frontend
+  namespace: istio
+spec:
+  hosts:
+  - "boutique.henrykingroyal.co"
+  gateways:
+  - istio-system/app-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: frontend
+        port:
+          number: 80
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: kiali
+  namespace: istio-system
+spec:
+  hosts:
+  - "kiali.henrykingroyal.co"
+  gateways:
+  - app-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: kiali
+        port:
+          number: 20001
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: prometheus
+  namespace: istio-system
+spec:
+  hosts:
+  - "prometheus.henrykingroyal.co"
+  gateways:
+  - app-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: prometheus
+        port:
+          number: 9090
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: grafana
+  namespace: istio-system
+spec:
+  hosts:
+  - "grafana.henrykingroyal.co"
+  gateways:
+  - app-gateway
+  http:
+  - match:
+    - uri:
+        prefix: "/"
+    route:
+    - destination:
+        host: grafana
+        port:
+          number: 3000
+
+EOT
+
+sudo chown ubuntu:ubuntu /home/ubuntu/istio.yaml
+sudo su -c "kubectl apply -f /home/ubuntu/istio.yaml" ubuntu
+
 EOF
 }
 
