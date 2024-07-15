@@ -236,6 +236,10 @@ sudo su -c "kubectl -n istio-system get deploy" ubuntu
 sudo su -c "kubectl create namespace istio" ubuntu
 sudo su -c "kubectl label namespace istio istio-injection=enabled" ubuntu
 
+# Label namespace for Prod manifest
+sudo su -c "kubectl create namespace prod-istio" ubuntu
+sudo su -c "kubectl label namespace prod-istio istio-injection=enabled" ubuntu
+
 sudo echo "Istio installation is complete."
 
 sudo su -c "kubectl apply -f ~/istio-1.16.2/istio-1.16.2/samples/addons" ubuntu
