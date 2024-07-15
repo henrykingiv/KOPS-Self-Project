@@ -241,21 +241,44 @@ sudo echo "Istio installation is complete."
 sudo su -c "kubectl apply -f ~/istio-1.16.2/istio-1.16.2/samples/addons" ubuntu
 sleep 10
 
-#Repo Deployment for Stage and Prod
-REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
-TARGET_DIR="/home/ubuntu/boutique-microservices-application"
+# echo "Fetching initial admin password..."
+# ARGOCD_ADMIN_PASSWORD=$(<argopassword)
+# echo "Initial admin password: $ARGOCD_ADMIN_PASSWORD"
 
-# Create the target directory with correct permissions
-sudo mkdir -p $TARGET_DIR
-sudo chown -R ubuntu:ubuntu $TARGET_DIR
+# # Step 5: Login to ArgoCD using CLI
+# ARGOCD_SERVER="argocd.henrykingroyal.co"
+# echo "Logging in to ArgoCD..."
+# argocd login $ARGOCD_SERVER --username admin --password $ARGOCD_ADMIN_PASSWORD --insecure
 
-# Switch to the target directory
-cd /home/ubuntu
+# # Step 6: Create a new ArgoCD application
+# echo "Creating ArgoCD application..."
+# argocd app create my-app \
+#   --repo https://github.com/henrykingiv/boutique-microservices-application.git \
+#   --path . \
+#   --dest-server http://kubernetes.henrykingroyal.co \
+#   --dest-namespace istio
 
-# Clone the repository
-sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
-sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/deployment.yaml" ubuntu
-sleep 20
+# # Step 7: Sync the application to deploy it
+# echo "Deploying the application..."
+# argocd app sync my-app
+
+# echo "ArgoCD setup and application deployment complete!"
+
+# #Repo Deployment for Stage and Prod
+# REPO_URL="https://github.com/henrykingiv/boutique-microservices-application.git"
+# TARGET_DIR="/home/ubuntu/boutique-microservices-application"
+
+# # Create the target directory with correct permissions
+# sudo mkdir -p $TARGET_DIR
+# sudo chown -R ubuntu:ubuntu $TARGET_DIR
+
+# # Switch to the target directory
+# cd /home/ubuntu
+
+# # Clone the repository
+# sudo -u ubuntu git clone $REPO_URL $TARGET_DIR
+# sudo su -c "kubectl apply -f /home/ubuntu/boutique-microservices-application/deployment.yaml" ubuntu
+# sleep 20
 
 # Istio Network Gateway Configuration
 sudo cat <<EOT> /home/ubuntu/istio.yaml
