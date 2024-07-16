@@ -53,7 +53,7 @@ sudo su -c "kops create cluster --cloud=aws \
   --control-plane-zones=eu-west-2a,eu-west-2b,eu-west-2c \
   --networking calico \
   --state=s3://kops-socks-shop \
-  --node-count=3 \
+  --node-count=5 \
   --topology private \
   --bastion \
   --ssh-public-key /home/ubuntu/.ssh/id_rsa.pub \
